@@ -766,11 +766,6 @@
               <FilePath>..\lib\FlashDB\port\fal\src\fal_flash.c</FilePath>
             </File>
             <File>
-              <FileName>fal_flash_stm32f1_port.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\lib\FlashDB\port\fal\src\fal_flash_stm32f1_port.c</FilePath>
-            </File>
-            <File>
               <FileName>fal_partition.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\lib\FlashDB\port\fal\src\fal_partition.c</FilePath>
@@ -794,6 +789,11 @@
               <FileName>fal_def.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\lib\FlashDB\port\fal\inc\fal_def.h</FilePath>
+            </File>
+            <File>
+              <FileName>fal_flash_port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\lib\FlashDB\port\fal\src\fal_flash_port.c</FilePath>
             </File>
           </Files>
         </Group>

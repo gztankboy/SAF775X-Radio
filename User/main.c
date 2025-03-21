@@ -63,10 +63,10 @@ struct keyFunc sAudioKeyFunc;
 struct device sDevice = {
   .bAutoMono=true,
   .bSoftReboot=true,
-  .sInfo.pid[0]=8,  // flash arrange
+  .sInfo.pid[0]=9,  // flash arrange
   .sInfo.pid[1]=2,  // version
-  .sInfo.pid[2]=0,  // subversion
-  .sInfo.pid[3]=20250308,
+  .sInfo.pid[2]=2,  // subversion
+  .sInfo.pid[3]=20250320,
 };
 
 #define FDB_LOG_TAG "[kvdb]"
@@ -90,6 +90,8 @@ volatile uint32_t nQPeakDet;
 
 struct RDSBuffer sRDSBuffer;
 struct RDSData sRDSData;
+
+volatile bool tmpMono;
 
 /************************************Indicator*********************************/
 
@@ -148,14 +150,18 @@ void saveSettings(uint8_t cfgID)
   
 }
 
-void readSettings(uint8_t cfgID)
+;void readSettings(uint8_t cfgID)
 {
   struct fdb_blob blob;
   int needUpdate = 0;
+  struct device tempDevice;
   
   if(cfgID == CFG_DEVICE || cfgID == CFG_ALL) {
-    fdb_kv_get_blob(&kvdb, "version", fdb_blob_make(&blob, &sDevice, sizeof(sDevice)));
+    fdb_kv_get_blob(&kvdb, "version", fdb_blob_make(&blob, &tempDevice, sizeof(sDevice)));
     needUpdate += blob.saved.len;
+    
+    sDevice.bAutoMono = tempDevice.bAutoMono;
+    sDevice.bSoftReboot = tempDevice.bSoftReboot;
   }
   
   if(cfgID == CFG_RADIO || cfgID == CFG_ALL) {
@@ -1023,6 +1029,8 @@ void MenuRadio(void)
           SetSoftMute(sTuner.Config.nSoftMute[sTuner.Radio.nRFMode]);
         };break;
         case 10:{ // stereo blend
+          sTuner.Config.nFMST = inRangeInt(0, 4, sTuner.Config.nFMST+lcode);
+          SetFMStereo(sTuner.Config.nFMST);
         };break;
         case 11:{ //dynamic cut
         };break;
@@ -1345,7 +1353,8 @@ void MenuMain(void)
 
 int main(void)
 {
-  uint32_t verCheck[4];
+  int16_t tmpArr[4] = {0};
+  
   
   SYS_Init();
   GPIO_Init();
@@ -1466,7 +1475,6 @@ int main(void)
   TunerInit();
   
   // special func
-  SetFMStereoImprovement(sTuner.Config.bFMSI);
   if(sTuner.Config.bFMiPD == true || sTuner.Config.nFMANTsel == 1)
     gpio_bit_set(GPIOC,GPIO_PIN_11);
   
@@ -1510,14 +1518,23 @@ int main(void)
     sTuner.Audio.index = 0;
     gpio_bit_reset(GPIOC, GPIO_PIN_4);
     gpio_bit_set(GPIOA, GPIO_PIN_6);
+    sTuner.Config.bForceMono = false;
   }
   else
   {
     sTuner.Audio.index = 1;
     gpio_bit_reset(GPIOA, GPIO_PIN_6);
     gpio_bit_set(GPIOC, GPIO_PIN_4);
+    if(sDevice.bAutoMono == true) {
+      sTuner.Config.bForceMono = true;
+    } else {
+      sTuner.Config.bForceMono = false;
+    }
   }
   lastDET = nowDET;
+  
+  SetFMStereoImprovement(sTuner.Config.bFMSI);
+  tmpMono = sTuner.Config.bForceMono;
   
   setMute(ADSP_MUTE_MAIN, 0);
   
@@ -1607,6 +1624,7 @@ int main(void)
       }
       else
       {
+        RDS_Refresh();
         if(sTuner.Radio.nBandMode == BAND_SW)
           SwitchBand(BAND_FM);
         else
@@ -1617,6 +1635,10 @@ int main(void)
     
     VolumeHandler();
     
+    if(tmpMono != sTuner.Config.bForceMono) {
+      SetFMStereo(sTuner.Config.nFMST);
+      tmpMono = sTuner.Config.bForceMono;
+    }
     /***************************/
     
     if(bFlagGSA == true && !sDisplay.emiFree)
@@ -1657,7 +1679,6 @@ int main(void)
       }
       
       TunerInit();
-      SetFMStereoImprovement(sTuner.Config.bFMSI);
       
       setDCFilter(sAudioBasic.dcBlock);
       setMainVol(sAudioBasic.mainVol);
@@ -1674,15 +1695,25 @@ int main(void)
         sTuner.Audio.index = 0;
         gpio_bit_reset(GPIOC, GPIO_PIN_4);
         gpio_bit_set(GPIOA, GPIO_PIN_6);
+        sTuner.Config.bForceMono = false;
       }
       else
       {
         sTuner.Audio.index = 1;
         gpio_bit_reset(GPIOA, GPIO_PIN_6);
         gpio_bit_set(GPIOC, GPIO_PIN_4);
+        if(sDevice.bAutoMono == true) {
+          sTuner.Config.bForceMono = true;
+        } else {
+          sTuner.Config.bForceMono = false;
+        }
       }
+      
       lastDET = nowDET;
-
+      
+      SetFMStereoImprovement(sTuner.Config.bFMSI);
+      tmpMono = sTuner.Config.bForceMono;
+      
       initSignalScaler();
 
       initTone(&sAudioTone, false);
@@ -1777,12 +1808,16 @@ void TIM_Callback(uint8_t tim)
           sTuner.Audio.index = 0;
           gpio_bit_reset(GPIOC, GPIO_PIN_4);
           gpio_bit_set(GPIOA, GPIO_PIN_6);
+          sTuner.Config.bForceMono = false;
         }
         else
         {
           sTuner.Audio.index = 1;
           gpio_bit_reset(GPIOA, GPIO_PIN_6);
           gpio_bit_set(GPIOC, GPIO_PIN_4);
+          if(sDevice.bAutoMono == true) {
+            sTuner.Config.bForceMono = true;
+          }
         }
         lastDET = nowDET;
       }

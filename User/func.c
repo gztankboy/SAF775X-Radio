@@ -71,6 +71,15 @@ int myround(float num)
   return tmp/10;
 }
 
+
+int max(int a, int b) {
+  return a>b? a:b;
+}
+
+int min(int a, int b) {
+  return a<b? a:b;
+}
+
 /**************************************************************************************/
 /*
 DAC CHANNEL 1 -> PA4 -> BackLight

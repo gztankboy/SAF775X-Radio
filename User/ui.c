@@ -16,7 +16,7 @@ extern uint8_t nGsaVal[10];
 extern uint32_t nQPeakDet;
 
 extern struct displayConfig sDisplay;
-
+extern struct RDSData sRDSData;
 extern struct basicControl sAudioBasic;
 extern struct toneControl sAudioTone;
 extern struct graphicEQ sAudioEQ;
@@ -457,6 +457,8 @@ void UI_Main(bool init)
   
   static uint8_t   vsec      = 0;
   
+  static uint8_t   vRTUpd    = 0;
+  
   uint8_t len;
   uint8_t str[16];
   uint16_t tmp, data;
@@ -484,12 +486,14 @@ void UI_Main(bool init)
     GUI_DrawBuff_Origin(196,80,16,16,img_IntTemp);
     GUI_DrawBuff_Origin(238,80,16,16,img_degree);
     
-    if(sDisplay.emiFree == true)
-    {
+    if(sDisplay.emiFree == true) {
       GUI_DrawBuff_Origin(124,80,16,16,img_channel);
       GUI_DrawBuff_Origin(156,80,8,16,img_num16x+352);
       
       GUI_DrawBuff_Origin(64,72,126,8,img_scale);
+    } else {
+      GUI_Text(1,50,-1,-1,"CH.",&Font12,COLOR_BLACK,COLOR_WHITE);
+      GUI_Char(36,50,'/',&Font12,COLOR_BLACK,COLOR_WHITE);
     }
     //GUI_Rectangle(196+2,80+2,53,13,1,COLOR_BLACK);  // rect for VU meter
   }
@@ -501,7 +505,7 @@ void UI_Main(bool init)
     len = num2str(vfreq, str);
     
     GUI_FillBuff_Origin(41, 0, 60, 48, 0x00);  // Clear first two digits
-    GUI_FillBuff_Origin(2, 48, 188, 16, 0x00);  // Clear R D S
+    
     
     GUI_DrawBuff_Origin(166, 0, 30, 48, img_num48x+str[len-1]*360);
     GUI_DrawBuff_Origin(136, 0, 30, 48, img_num48x+str[len-2]*360);
@@ -529,6 +533,10 @@ void UI_Main(bool init)
       i = 125*(vfreq-nBandFMin[band])/(nBandFMax[band]-nBandFMin[band]) + 61;
       GUI_FillBuff(61,68,126+7,4,COLOR_WHITE);
       GUI_DrawBuff_Origin(i,68,7,4,img_curser7x4);
+      
+      GUI_FillBuff_Origin(2, 48, 224+28, 16, 0x00);  // Clear R D S
+    } else {
+      GUI_FillBuff_Origin(65, 48, 154+35, 16, 0x00);  // Clear R D S
     }
     
   }
@@ -663,17 +671,20 @@ void UI_Main(bool init)
     
     if(sDisplay.emiFree == true)
     {
-      GUI_DrawBuff_Origin(140,80,8,16,img_num16x+32*(vchan/10));
-      GUI_DrawBuff_Origin(148,80,8,16,img_num16x+32*(vchan%10));
+      GUI_DrawBuff_Origin(140,80,8,16,img_num16x+32*((vchan+1)/10));
+      GUI_DrawBuff_Origin(148,80,8,16,img_num16x+32*((vchan+1)%10));
       
-      GUI_DrawBuff_Origin(164,80,8,16,img_num16x+32*((vchannum)/10));
-      GUI_DrawBuff_Origin(172,80,8,16,img_num16x+32*((vchannum)%10));
+      GUI_DrawBuff_Origin(164,80,8,16,img_num16x+32*(vchannum/10));
+      GUI_DrawBuff_Origin(172,80,8,16,img_num16x+32*(vchannum%10));
     }
     else
     {
-      GUI_FillBuff_Origin(0,48,36,16,COLOR_WHITE);
-      GUI_Text(1,50,-1,-1,"CH.",&Font12,COLOR_BLACK,COLOR_WHITE);
-      GUI_Number(22,50,vchan,ALIGNMENT_LEFT,&Font12,COLOR_BLACK,COLOR_WHITE);
+      //GUI_FillBuff_Origin(0,48,36,16,COLOR_WHITE);
+      GUI_Char(22,50,((vchan+1)/10)+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
+      GUI_Char(29,50,((vchan+1)%10)+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
+      
+      GUI_Char(43,50,(vchannum/10)+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
+      GUI_Char(50,50,(vchannum%10)+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
     }
   }
   
@@ -705,24 +716,21 @@ void UI_Main(bool init)
   if(vsec != sDevice.sTime.second || init)
   {
     vsec = sDevice.sTime.second;
-    GUI_Char(197,50,sDevice.sTime.hour/10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
-    GUI_Char(204,50,sDevice.sTime.hour%10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
-    GUI_Char(211,50,':',&Font12,COLOR_BLACK,COLOR_WHITE);
-    GUI_Char(218,50,sDevice.sTime.minute/10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
-    GUI_Char(225,50,sDevice.sTime.minute%10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
-    GUI_Char(232,50,':',&Font12,COLOR_BLACK,COLOR_WHITE);
-    GUI_Char(239,50,sDevice.sTime.second/10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
-    GUI_Char(246,50,sDevice.sTime.second%10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
+    vRTUpd++;
+    //GUI_Char(218,50,sDevice.sTime.hour/10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
+    //GUI_Char(225,50,sDevice.sTime.hour%10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
+    //GUI_Char(232,50,':',&Font12,COLOR_BLACK,COLOR_WHITE);
+    //GUI_Char(239,50,sDevice.sTime.minute/10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
+    //GUI_Char(246,50,sDevice.sTime.minute%10+'0',&Font12,COLOR_BLACK,COLOR_WHITE);
   }
   
   
   // R D S ∞
-  if( (sRDSData.RDSFlag & ReadyBit_PI) != 0 )
+  if( (sRDSData.RDSFlag & ReadyBit_PI) != 0 || ( init&&sRDSData.PI_Available) )
   {
     sRDSData.RDSFlag &= ~ReadyBit_PI;
     tmp = sRDSData.PI;
-    for(i = 3; i >= 0; i--)
-    {
+    for(i = 3; i >= 0; i--) {
       data = tmp & 0x000F;
       if(data < 10)
         str[i] = data + '0';
@@ -731,13 +739,37 @@ void UI_Main(bool init)
       tmp = tmp >> 4;
     }
     str[4] = 0;
-    GUI_Text(2, 50, -1, -1, (char*)str, &Font12, COLOR_BLACK, COLOR_WHITE);
+    if(sDisplay.emiFree == true) {
+      GUI_Text(2, 50, -1, -1, (char*)str, &Font12, COLOR_BLACK, COLOR_WHITE);
+    } else {
+      GUI_Text(65, 50, -1, -1, (char*)str, &Font12, COLOR_BLACK, COLOR_WHITE);
+    }
   }
   
-  if( (sRDSData.RDSFlag & ReadyBit_PS) != 0 )
+  if( (sRDSData.RDSFlag & ReadyBit_PS) != 0 || ( init&&sRDSData.PS_Available) )
   {
     sRDSData.RDSFlag &= ~ReadyBit_PS;
-    GUI_Text(44, 50, -1, -1, (char*)sRDSData.PS, &Font12, COLOR_BLACK, COLOR_WHITE);
+    if(sDisplay.emiFree == true) {
+      GUI_Text(44,  50, -1, -1, (char*)sRDSData.PS, &Font12, COLOR_BLACK, COLOR_WHITE);
+    } else {
+      GUI_Text(100, 50, -1, -1, (char*)sRDSData.PS, &Font12, COLOR_BLACK, COLOR_WHITE);
+    }
+  }
+  
+  
+  static uint8_t vRTpos = 0;
+  
+  if( sRDSData.RT_Size[sRDSData.RT_Flag] > 0 && vRTUpd >= 2 )
+  {
+    vRTUpd = 0;
+    
+    if(sDisplay.emiFree == true) {
+      GUI_RDS(114, (char*)sRDSData.RT[sRDSData.RT_Flag], sRDSData.RT_Size[sRDSData.RT_Flag], vRTpos, 20);
+    } else {
+      GUI_RDS(163, (char*)sRDSData.RT[sRDSData.RT_Flag], sRDSData.RT_Size[sRDSData.RT_Flag], vRTpos, 13);
+    }
+    
+    vRTpos = inRangeLoop(0, sRDSData.RT_Size[sRDSData.RT_Flag], vRTpos, 2);
   }
 }
 

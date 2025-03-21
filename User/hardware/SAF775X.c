@@ -13,6 +13,8 @@
 
 struct Dirana3Radio *sys;
 
+extern struct RDSData sRDSData;
+
 /************************************************************************************************************************************/
 
 const uint8_t nBandRFMode[NUM_BANDS] = 
@@ -648,7 +650,7 @@ void SetRadioSignal(void)
 	uint8_t data = 0;
 	if(sys->Radio.nRFMode == RFMODE_FM)
 	{
-		if(sys->Config.nFMST == 0)
+		if(sys->Config.bForceMono == true || sys->Config.nFMST == 0)
 			data |= 1<<7;
 		if(sys->Config.bFMSI == true)
 			data |= 1<<5;
@@ -660,6 +662,70 @@ void SetRadioSignal(void)
 		data |= (sys->Config.nAMFixedHP<<2) + sys->Config.nAMFixedLP;
 	}
 	Set_REG(0x06, &data, 1);
+  Set_REG(0x66, &data, 1);
+}
+
+// Attack --> Mono
+// Decay  --> Stereo
+
+// Mono Low Default High Full
+const uint8_t stereoLevel[5][7] = {
+  { 0x72, 0x3F, 0x4A, 0x33, 0x00, 0x3F, 0x13 },  // 
+  { 0x72, 0x3F, 0x4A, 0x33, 0x00, 0x3F, 0x13 },  // 
+  { 0x72, 0x3F, 0x4A, 0x33, 0x00, 0x3F, 0x13 },  // Default
+  { 0x72, 0x3F, 0x4A, 0x33, 0x00, 0x3F, 0x13 },  // 
+  { 0x72, 0x3F, 0x4A, 0x33, 0x00, 0x3F, 0x13 }   // 
+};
+
+// Mono Low Default High Full
+const int8_t fmsiLevel[5][9] = {
+  { 0x00, 0x32, 0x00, 0x32, 28, 36, 52, 84, 32 },  // 
+  { 0x00, 0x64, 0x00, 0x64, 36, 40, 63, 90, 0  },  // 
+  { 0x00, 0x32, 0x00, 0x32, 28, 36, 52, 84, 32 },  // Default
+  { 0x00, 0x14, 0x00, 0x14, 28, 20, 32, 54, 48 },  // 
+  { 0x00, 0x01, 0x00, 0x01, 24, 14, 24, 40, 64 },  // 
+};
+
+
+void SetFMStereo(uint8_t level)
+{
+  if(level > 4)
+    return;
+  
+  uint8_t txd[5] = { 0 };
+  sys->Config.nFMST = level;
+  SetRadioSignal(); // Set ForceMono & FMSI
+  
+  if(sys->Radio.nRFMode != RFMODE_FM)
+    return;
+  
+  if(sys->Config.bFMSI == true) {
+    Set_REGFree(2,0x19,0);
+    Set_REGFree(2,0x79,0);
+    Set_REGFree(2,0x1D,0);
+    Set_REGFree(2,0x7D,0);
+    
+    for(int i = 0; i < 2; i++) {
+      txd[0] = 0x01+i*16;
+      txd[1] = fmsiLevel[level][0], txd[2] = fmsiLevel[level][1];
+      txd[3] = fmsiLevel[level][2], txd[4] = fmsiLevel[level][3];
+      Set_REG(0xC7, txd, 5);
+      
+      txd[0] = 0x02+i*16;
+      txd[1] = fmsiLevel[level][4], txd[2] = fmsiLevel[level][5];
+      txd[3] = fmsiLevel[level][6], txd[4] = fmsiLevel[level][7];
+      Set_REG(0xC7, txd, 5);
+      
+      txd[0] = 0x03+i*16;
+      txd[1] = fmsiLevel[level][8];
+      Set_REG(0xC7, txd, 2);
+    }
+    
+  } else {
+    Set_REG(0x18, (uint8_t*)stereoLevel[level], 7);
+    Set_REG(0x78, (uint8_t*)stereoLevel[level], 7);
+  }
+  
 }
 
 void SetFMStereoImprovement(bool on)
@@ -667,21 +733,7 @@ void SetFMStereoImprovement(bool on)
 	if(sys->Config.bDemoMode == false)
 		return;
 	sys->Config.bFMSI = on;
-	if(on == true)
-	{
-		Set_REGFree(2,0x19,0);
-		Set_REGFree(2,0x79,0);
-		Set_REGFree(2,0x1D,0);
-		Set_REGFree(2,0x7D,0);
-	}
-	else
-	{
-		Set_REGFree(2,0x19,0x3F);
-		Set_REGFree(2,0x79,0x3F);
-		Set_REGFree(2,0x1D,0x3F);
-		Set_REGFree(2,0x7D,0x3F);
-	}
-	SetRadioSignal();
+	SetFMStereo(sys->Config.nFMST);
 }
 
 void SetFMDeemphasis(uint8_t tao)
@@ -747,16 +799,6 @@ void SetSoftMute(uint8_t level)
 /**************/
 
 
-void SetFMStereo(uint8_t level)
-{
-	sys->Config.nFMST = level;
-	SetRadioSignal();
-	switch(level)
-	{
-		
-	}
-	
-}
 
 /**************/
 
@@ -772,7 +814,7 @@ void SwitchBand(uint8_t band)
 	SetTuner();
 	SetTunerOPT();
 	SetRadioDSP();
-	SetRadioSignal();
+  SetFMStereo(sys->Config.nFMST);
 	SetRadioAutoBW(1,2);
 	SetSoftMute(sys->Config.nSoftMute[sys->Radio.nRFMode]);
 	
@@ -791,7 +833,7 @@ void TunerStructInit(struct Dirana3Radio* init, bool initPara)
 		sys->Config.nBandAGC[1] = 0;
 		sys->Config.nBandFilter[0] = 0;
 		sys->Config.nBandFilter[1] = 0;
-		sys->Config.bFMAGCext = 0;
+		sys->Config.bFMAGCext = 1;
 		sys->Config.nFMANTsel = 0;
 		sys->Config.bFMiPD = 0;
 		sys->Config.bFMiMS = 1;
@@ -802,6 +844,7 @@ void TunerStructInit(struct Dirana3Radio* init, bool initPara)
 		sys->Config.nNBSA[RFMODE_AM] = 3;
 		 
 		sys->Config.nFMST = 1;
+    sys->Config.bForceMono = false;
 		sys->Config.nDeemphasis = 1;
 		
 		sys->Config.bAMANTtyp = 0;

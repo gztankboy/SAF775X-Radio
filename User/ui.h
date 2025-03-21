@@ -18,7 +18,8 @@
 #ifndef __UI_H_
 #define __UI_H_
 
-#include "SAF775X.h"
+#include "stdint.h"
+#include "stdbool.h"
 
 void UI_Main(bool init);
 void UI_Menu(int8_t index, bool init);

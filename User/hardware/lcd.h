@@ -100,4 +100,8 @@ void GUI_Line_VH(uint16_t xs, uint8_t ys, uint8_t direction, uint16_t length, ui
 void GUI_Line(uint16_t xs, uint8_t ys, uint16_t xe, uint8_t ye, uint8_t color);
 void GUI_Rectangle(uint16_t xs, uint8_t ys, uint16_t length, uint8_t height, uint8_t line_w, uint8_t color);
 
+
+
+int GUI_RDS(uint16_t xs, const char* text, uint8_t textSize, uint8_t showStart, uint8_t showSize);
+
 #endif

@@ -38,10 +38,8 @@ OF SUCH DAMAGE.
 #ifndef MAIN_H
 #define MAIN_H
 
-/* led spark function */
 #include "stdbool.h"
 #include "gd32f30x.h"
-#include "rds.h"
 
 #define MENU_MAIN_INDEX    6
 #define MENU_DISP_INDEX    7
@@ -60,8 +58,6 @@ OF SUCH DAMAGE.
 #define FLASH_LW      17
 #define FLASH_MW      18
 #define FLASH_SW      19
-//    PAGE    0       1       2     3-8      9          10          11      12
-// CONTENT DEVICE | RADIO | DISP | AUDIO | CH_FM | CH_LW+CH_NUM | CH_MW | CH_SW
 
 typedef struct _TIME
 {

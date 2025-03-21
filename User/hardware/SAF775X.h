@@ -2,14 +2,15 @@
 #define __SAF775X_H
 
 #include "stdint.h"
-#include "main.h"
+#include "stdbool.h"
+#include "rds.h"
 
 #define DSP_I2C_ADDR      0x38
 
 
 // Band RF Mode
-#define RFMODE_FM       0	//FM
-#define RFMODE_AM       1	//AM
+#define RFMODE_FM       0  //FM
+#define RFMODE_AM       1  //AM
 
 // Volume
 #define MIN_VOL         0
@@ -106,6 +107,7 @@ struct tunerSetting
 	
 	// FM立体声 0->单声道 [1~9]->立体声
 	uint8_t nFMST;
+  bool bForceMono;
 	// FM去加重时间常数  1=50us(default), 2=75us
 	uint8_t nDeemphasis;
 	
@@ -188,6 +190,7 @@ void SetFMChannelEqualizer(bool on);
 void SetNoiseBlanker(uint8_t rfmode, uint8_t sensIF, uint8_t sensAu);
 
 void SetRadioSignal(void);
+void SetFMStereo(uint8_t level);
 void SetFMStereoImprovement(bool on);
 void SetFMDeemphasis(uint8_t tao);
 void SetAMFixedHP(uint8_t hp);

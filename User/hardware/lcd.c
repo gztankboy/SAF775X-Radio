@@ -22,7 +22,7 @@
 #include "stdarg.h"
 
 //#include "pic.h"
-
+#include "func.h"
 
 static uint16_t xmin, xmax, ymin, ymax;
 
@@ -443,7 +443,7 @@ void GUI_Text(uint16_t xs, uint8_t ys, int16_t xe, int16_t ye, const char* text,
   
   while(*p_text != 0)
   {
-    if(*p_text == 10)  // \n
+    if(*p_text == 0x0A)  // \n
     {
       x = xs;
       y+= font->Height;
@@ -469,9 +469,37 @@ void GUI_Text(uint16_t xs, uint8_t ys, int16_t xe, int16_t ye, const char* text,
   }
 }
 
-void GUI_Text_Part(uint16_t xs, uint8_t ys, const char* text, sFONT* font, uint8_t color, uint8_t start, uint8_t end)
+// ret 1:read \r    2:out of border
+int GUI_RDS(uint16_t xs, const char* text, uint8_t textSize, uint8_t showStart, uint8_t showSize)
 {
+  const char* p_text = text;
+  uint16_t x = xs;
+  uint8_t y = 50;
+  uint16_t endx = LCD_DRV_MAX_X;
+  uint16_t endy = LCD_DRV_MAX_Y;
   
+  uint8_t textDisp = min(textSize-showStart, showSize);
+  p_text+=showStart;
+  
+  while(textDisp)
+  {
+    if(*p_text >= 32 && *p_text <= 126) { //Normal Char
+      GUI_Char(x, y, *p_text, &Font12, COLOR_BLACK, COLOR_WHITE);
+    } else if(*p_text == 0x0D) { // \r
+      return 1;
+    } else {
+      GUI_Char(x, y, ' ', &Font12, COLOR_BLACK, COLOR_WHITE);
+    }
+    x+=Font12.Width;
+    
+    if(x+Font12.Width > endx) {
+      return 2;
+    }
+    p_text++;
+    textDisp--;
+  }
+  
+  return 0;
 }
 
 // INT32 max 10位+1符号

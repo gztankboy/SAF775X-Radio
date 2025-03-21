@@ -34,6 +34,9 @@ bool checkRange(int min, int max, int num);
 uint32_t myabs(int32_t number);
 int myround(float num);
 
+int max(int a, int b);
+int min(int a, int b);
+
 void DAC_Start(uint8_t ch);
 void DAC_Stop(uint8_t ch);
 void DAC_OutVal(uint8_t ch, uint16_t val);
