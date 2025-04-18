@@ -9,6 +9,7 @@
  */
 
 #include <fal.h>
+#include <sfud.h>
 
 #ifdef FAL_USING_SFUD_PORT
 #ifdef RT_USING_SFUD

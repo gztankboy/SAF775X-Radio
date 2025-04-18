@@ -10,14 +10,13 @@
 #include "SAF775X.h"
 #include "lcd.h"
 #include "ui.h"
-#include "flash/flash.h"
 #include "func.h"
 #include "rtc.h"
 
 #include "Dirana3BasicDSP.h"
 
 #include "flashdb.h"
-
+#include "sfud.h"
 
 #define KEY_MENU    0
 #define KEY_UP      1
@@ -63,11 +62,13 @@ struct keyFunc sAudioKeyFunc;
 struct device sDevice = {
   .bAutoMono=true,
   .bSoftReboot=true,
-  .sInfo.pid[0]=9,  // flash arrange
+  .sInfo.pid[0]=11,  // flash arrange
   .sInfo.pid[1]=2,  // version
-  .sInfo.pid[2]=2,  // subversion
-  .sInfo.pid[3]=20250320,
+  .sInfo.pid[2]=3,  // subversion
+  .sInfo.pid[3]=20250408
 };
+
+uint32_t nConfigVer = 0;
 
 #define FDB_LOG_TAG "[kvdb]"
 
@@ -76,7 +77,8 @@ static struct fdb_default_kv_node default_kv_table[] = {
   {"codeName", "NYK7751", 0}, /* string KV */
   {"Author", "NyaKoishi", 0}, /* string KV */
   {"bootCount", &bootCount, sizeof(bootCount)}, // Int Type
-  {"bootTime", &accBootTime, sizeof(accBootTime)}
+  {"bootTime", &accBootTime, sizeof(accBootTime)},
+  {"cfgVer", &nConfigVer, sizeof(nConfigVer)}
 };
 
 /* KVDB object */
@@ -129,7 +131,9 @@ void saveSettings(uint8_t cfgID)
   struct fdb_blob blob;
   fdb_err_t err;
   if(cfgID == CFG_DEVICE || cfgID == CFG_ALL) {
-    err = fdb_kv_set_blob(&kvdb, "version", fdb_blob_make(&blob, &sDevice, sizeof(sDevice)));
+    err = fdb_kv_set_blob(&kvdb, "cfgVer", fdb_blob_make(&blob, &sDevice.sInfo.pid[0], sizeof(sDevice.sInfo.pid[0])));
+    fdb_kv_set_blob(&kvdb, "cfgAutomono", fdb_blob_make(&blob, &sDevice.bAutoMono, sizeof(sDevice.bAutoMono)));
+    fdb_kv_set_blob(&kvdb, "cfgSoftboot", fdb_blob_make(&blob, &sDevice.bSoftReboot, sizeof(sDevice.bSoftReboot)));
   }
   
   if(cfgID == CFG_RADIO || cfgID == CFG_ALL) {
@@ -150,18 +154,15 @@ void saveSettings(uint8_t cfgID)
   
 }
 
-;void readSettings(uint8_t cfgID)
+void readSettings(uint8_t cfgID)
 {
   struct fdb_blob blob;
   int needUpdate = 0;
-  struct device tempDevice;
   
   if(cfgID == CFG_DEVICE || cfgID == CFG_ALL) {
-    fdb_kv_get_blob(&kvdb, "version", fdb_blob_make(&blob, &tempDevice, sizeof(sDevice)));
+    fdb_kv_get_blob(&kvdb, "cfgAutomono", fdb_blob_make(&blob, &sDevice.bAutoMono, sizeof(sDevice.bAutoMono)));
+    fdb_kv_get_blob(&kvdb, "cfgSoftboot", fdb_blob_make(&blob, &sDevice.bSoftReboot, sizeof(sDevice.bSoftReboot)));
     needUpdate += blob.saved.len;
-    
-    sDevice.bAutoMono = tempDevice.bAutoMono;
-    sDevice.bSoftReboot = tempDevice.bSoftReboot;
   }
   
   if(cfgID == CFG_RADIO || cfgID == CFG_ALL) {
@@ -1324,7 +1325,7 @@ void MenuMain(void)
         case 1 :MenuAudio(),saveSettings(CFG_AUDIO);break;
         case 2 :MenuRadio(),saveSettings(CFG_RADIO);break;//Radio
         case 3 :MenuSearch(),saveSettings(CFG_RADIO);break;//ATS
-        case 4 :MenuDevice(),saveSettings(CFG_DEVICE);break;
+        case 4 :MenuDevice(),saveSettings(CFG_DEVICE),saveSettings(CFG_RADIO);break;
         case 5 :MenuAbout();break;
         default : index = 0;break;
       }
@@ -1382,10 +1383,8 @@ int main(void)
   ADC_Init();
   DAC_Init();
   USART_Init();
-  flash_init();
+  sfud_init();
   delay_ms(10);
-  
-  //fdb_kv_set_default(&kvdb);
   
   fdb_err_t result;
   int discardDB = 0;
@@ -1398,6 +1397,7 @@ int main(void)
   if (result != FDB_NO_ERR) {
     // Database init fail !!! Discard Database, Use default settings
     discardDB = 1;
+    FDB_INFO("Flash DataBase Init Fail!\n");
   }
   
   
@@ -1409,19 +1409,25 @@ int main(void)
     fdb_kv_get_blob(&kvdb, "bootCount", fdb_blob_make(&blob, &bootCount, sizeof(bootCount)));
     bootCount++;
     fdb_kv_set_blob(&kvdb, "bootCount", fdb_blob_make(&blob, &bootCount, sizeof(bootCount)));
-    FDB_INFO("Boot count: %d -> %d\n", bootCount-1, bootCount);
+    FDB_INFO("BootCount: %d -> %d\n", bootCount-1, bootCount);
     
     int needUpdate = 0;
-    struct device checkSetting = {0};
-    fdb_kv_get_blob(&kvdb, "version", fdb_blob_make(&blob, &checkSetting, sizeof(checkSetting)));
+    
+    fdb_kv_get_blob(&kvdb, "cfgVer", fdb_blob_make(&blob, &nConfigVer, sizeof(nConfigVer)));
     if(blob.saved.len > 0) {
-      if(checkSetting.sInfo.pid[0] != sDevice.sInfo.pid[0])
+      FDB_INFO("Config version: %d vs %d\n", nConfigVer, sDevice.sInfo.pid[0]);
+      if(sDevice.sInfo.pid[0] != nConfigVer) {
+        FDB_INFO("Config version not match! Using default configs\n");
         needUpdate = 1;
+      }
     } else {
+      FDB_INFO("Fail to read config version\n");
       needUpdate = 1;
     }
     
     if(needUpdate) { // Write Configs
+      fdb_kv_set_default(&kvdb);
+      
       LCD_StructInit(true);
       TunerStructInit(&sTuner, true);
       initBasicControl(&sAudioBasic, true);
@@ -1442,6 +1448,7 @@ int main(void)
       readChannels(BAND_LW);
       readChannels(BAND_MW);
       readChannels(BAND_SW);
+      readBasicPara();
     }
   } else {
     LCD_StructInit(true);
@@ -1458,7 +1465,6 @@ int main(void)
     sDevice.sTime.second = 0;
     sDevice.sTime.timestamp = 0;
   }
-  readBasicPara();
   
   delay_ms(5);
   

@@ -13,16 +13,16 @@
 
 
 #define NOR_FLASH_DEV_NAME             "zd25wq16"
-#define FAL_DEBUG 0
+#define FAL_DEBUG 1
 #define FAL_PART_HAS_TABLE_CFG
 
 /* ===================== Flash device Configuration ========================= */
-extern const struct fal_flash_dev spi_flash;
+extern struct fal_flash_dev nor_flash;
 
 /* flash device table */
 #define FAL_FLASH_DEV_TABLE                                          \
 {                                                                    \
-    &spi_flash,                                           \
+    &nor_flash,                                           \
 }
 /* ====================== Partition Configuration ========================== */
 #ifdef FAL_PART_HAS_TABLE_CFG
