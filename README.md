@@ -9,6 +9,20 @@
 
 </div>
 
+![主图](/Asset/main_pic.png "收音机实物图")
+
+## 📖 简介
+
+基于恩智浦Dirana3系列的多波段收音机，具体型号为SAF775X，支持双天线接收，可启用多种高级收音算法，由于使用的是演示密钥，所以开机3小时后会自动复位
+
+此密钥不涉及对SAF775X芯片的破解，没有商用价值，与 NXP 的企业权益无冲突，演示密钥与部分程序来源于[rayc345/WTCRC775X](https://github.com/rayc345/WTCRC775X)
+
+#### 🔗 项目链接
+
+ ➡️ [软件开源 GitHub](https://github.com/CatKoishi/SAF775X-Radio)
+
+ ➡️ [硬件开源 OSHWHub](https://oshwhub.com/imhhh/saf775x-radio)
+
 ## 📦 功能
 
 略，请看视频（没录）
